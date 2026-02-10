@@ -1,0 +1,30 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="32" cy="32" r="30" fill="#4F46E5" />
+  
+  <!-- 时钟刻度 -->
+  <g stroke="#FFFFFF" stroke-width="2">
+    <!-- 12个大刻度 -->
+    <line x1="32" y1="6" x2="32" y2="10" />
+    <line x1="54" y1="32" x2="50" y2="32" />
+    <line x1="32" y1="54" x2="32" y2="50" />
+    <line x1="10" y1="32" x2="6" y2="32" />
+    <!-- 4个小刻度示例 -->
+    <line x1="44" y1="18" x2="42" y2="20" />
+    <line x1="18" y1="44" x2="20" y2="42" />
+    <line x1="44" y1="44" x2="42" y2="42" />
+    <line x1="18" y1="18" x2="20" y2="20" />
+  </g>
+  
+  <!-- 时针 (指向25分钟位置，即12点25分的位置) -->
+  <line x1="32" y1="32" x2="32" y2="20" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- 分针 (指向5的位置，代表25分钟) -->
+  <line x1="32" y1="32" x2="44" y2="44" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- 中心圆点 -->
+  <circle cx="32" cy="32" r="4" fill="#FFFFFF" />
+  
+  <!-- 数字25 (已移至顶部) -->
+  <text x="32" y="16" font-family="Arial" font-size="10" font-weight="bold" text-anchor="middle" fill="#FFFFFF">25</text>
+</svg>
