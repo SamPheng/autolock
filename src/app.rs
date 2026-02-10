@@ -107,9 +107,9 @@ impl eframe::App for LockTimerApp {
             ui.label(status_text);
 
             // 重置按钮
-            if ui.button("Reset Timer").clicked() {
-                self.reset_timer();
-            }
+            // if ui.button("Reset Timer").clicked() {
+            //     self.reset_timer();
+            // }
         });
 
         // 100ms 刷新界面（官方推荐刷新率）
