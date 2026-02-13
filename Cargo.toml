@@ -11,6 +11,10 @@ winapi = { version = "0.3.9", features = [
     "winuser",
     "wtsapi32",
     "winnt",
+    "tlhelp32",
+    "handleapi",
+    "errhandlingapi",
+    "ntdef",
 ] }
 image = { version = "0.24", features = ["ico"] }
 
