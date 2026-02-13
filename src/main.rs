@@ -3,10 +3,12 @@ mod app;
 mod platform;
 mod timer;
 
-use app::LockTimerApp;
-use eframe::egui;
+use app::AutolockApp;
+use eframe::{NativeOptions, egui};
+use platform::{monitor_session_events, trigger_lock};
+use timer::{Timer, start_timer_thread};
 
-fn main() -> Result<(), eframe::Error> {
+fn main() {
     // 加载图标数据
     let icon_data = include_bytes!("icon.ico");
     let icon_image = image::load_from_memory(icon_data)
@@ -21,19 +23,36 @@ fn main() -> Result<(), eframe::Error> {
         height,
     };
 
-    // ===== 0.33.3 使用新的viewport API =====
-    let native_options = eframe::NativeOptions {
+    let timer = Timer::new(1);
+
+    {
+        timer.lock().unwrap().set_callback(move || {
+            trigger_lock();
+        });
+    }
+
+    start_timer_thread(timer.clone());
+
+    {
+        let timer_clone = timer.clone();
+        monitor_session_events(move || {
+            timer_clone.lock().unwrap().reset();
+        });
+    }
+
+    timer.lock().unwrap().start();
+
+    let options = NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([300.0, 220.0])
             .with_min_inner_size([300.0, 220.0])
             .with_icon(icon),
-        ..eframe::NativeOptions::default()
+        ..Default::default()
     };
 
-    // 运行应用（0.33.3 官方标准写法）
-    eframe::run_native(
-        "25分钟锁屏计时器",
-        native_options,
-        Box::new(|_cc| Ok(Box::new(LockTimerApp::default()))),
-    )
+    let _ = eframe::run_native(
+        "Auto Lock",
+        options,
+        Box::new(|_cc| Ok(Box::new(AutolockApp::new(timer)))),
+    );
 }

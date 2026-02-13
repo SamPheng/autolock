@@ -1,86 +1,63 @@
-use std::process::Command;
+use std::thread;
+use std::time::Duration;
+use winapi::shared::minwindef::{DWORD, FALSE};
+use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
+use winapi::um::tlhelp32::{
+    CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next,
+};
+use winapi::um::winuser::LockWorkStation;
 
-// Windows锁屏状态检测
-#[cfg(target_os = "windows")]
-pub fn is_windows_locked() -> bool {
-    use std::ffi::OsString;
-    use std::os::windows::ffi::OsStringExt;
-    use winapi::ctypes::c_void;
-    use winapi::um::winuser::{
-        CloseDesktop, DESKTOP_READOBJECTS, GetUserObjectInformationW, OpenInputDesktop, UOI_NAME,
-    };
-
+pub fn trigger_lock() {
     unsafe {
-        let hdesk = OpenInputDesktop(0, 0, DESKTOP_READOBJECTS);
-        if !hdesk.is_null() {
-            let mut desktop_name: [u16; 256] = [0; 256];
-            let mut name_len: u32 = 0;
-            let result = GetUserObjectInformationW(
-                hdesk as *mut c_void,
-                UOI_NAME as i32,
-                desktop_name.as_mut_ptr() as *mut c_void,
-                desktop_name.len() as u32,
-                &mut name_len,
-            );
+        LockWorkStation();
+    }
+}
 
-            CloseDesktop(hdesk);
+pub fn is_screen_locked() -> bool {
+    // 检查LogonUI.exe进程是否在运行，这是Windows登录屏幕的进程
+    unsafe {
+        let snapshot = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
+        if snapshot == INVALID_HANDLE_VALUE {
+            return false;
+        }
 
-            if result != 0 && name_len > 0 {
-                let char_count = (name_len / 2) as usize;
-                let safe_char_count = char_count.min(256);
-                let desktop_name_str = OsString::from_wide(&desktop_name[..safe_char_count])
-                    .to_string_lossy()
-                    .into_owned();
+        let mut process_entry: PROCESSENTRY32 = std::mem::zeroed();
+        process_entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as DWORD;
 
-                if desktop_name_str.contains("Winlogon") {
-                    return true;
-                }
+        let mut result = Process32First(snapshot, &mut process_entry);
+        let mut found = false;
+
+        while result != FALSE && !found {
+            let process_name =
+                std::ffi::CStr::from_ptr(process_entry.szExeFile.as_ptr()).to_string_lossy();
+
+            if process_name == "LogonUI.exe" {
+                found = true;
+            } else {
+                result = Process32Next(snapshot, &mut process_entry);
             }
         }
 
-        return check_session_locked();
+        CloseHandle(snapshot);
+        found
     }
 }
 
-// 使用会话API检查锁屏状态
-#[cfg(target_os = "windows")]
-fn check_session_locked() -> bool {
-    use winapi::um::winuser::OpenInputDesktop;
+pub fn monitor_session_events<F: Fn() + Send + 'static>(on_unlock: F) {
+    thread::spawn(move || {
+        let mut was_locked = false;
 
-    // 方法：尝试打开输入桌面
-    // 如果成功打开（未锁屏），返回 false
-    // 如果失败（锁屏），返回 true
-    unsafe {
-        let hdesk = OpenInputDesktop(0, 0, 0);
-        if !hdesk.is_null() {
-            use winapi::um::winuser::CloseDesktop;
-            CloseDesktop(hdesk);
-            return false; // 可以打开桌面，未锁屏
+        loop {
+            thread::sleep(Duration::from_secs(1));
+
+            let is_locked = is_screen_locked();
+
+            // 如果之前被锁定，现在解锁了，触发回调
+            if was_locked && !is_locked {
+                on_unlock();
+            }
+
+            was_locked = is_locked;
         }
-        true // 无法打开桌面，已锁屏
-    }
-}
-
-// 跨平台锁屏（Windows 优先）
-pub fn trigger_lock() {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = Command::new("rundll32")
-            .args(["user32.dll", "LockWorkStation"])
-            .status();
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        let _ = Command::new("pmset").arg("displaysleepnow").status();
-        let _ = Command::new("osascript")
-            .args(["-e", "tell application \"System Events\" to keystroke \"q\" using {command down, control down}"])
-            .status();
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let _ = Command::new("loginctl").arg("lock-session").status();
-        let _ = Command::new("xdg-screensaver").arg("lock").status();
-    }
+    });
 }

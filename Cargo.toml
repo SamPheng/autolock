@@ -5,8 +5,18 @@ edition = "2024"
 
 [dependencies]
 eframe = { version = "0.33.3", features = ["default"] }
-winapi = { version = "0.3.9", features = ["winuser"] }
+winapi = { version = "0.3.9", features = [
+    "winuser",
+    "powrprof",
+    "wtsapi32",
+    "tlhelp32",
+    "handleapi",
+    "processthreadsapi",
+    "winnt",
+    "minwindef",
+] }
 image = { version = "0.24", features = ["ico"] }
+chrono = "0.4.31"
 
 [build-dependencies]
 winres = "^0.1.12"
