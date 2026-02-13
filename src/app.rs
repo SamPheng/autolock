@@ -15,29 +15,40 @@ impl AutolockApp {
 impl eframe::App for AutolockApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Auto Lock");
-            ui.separator();
+            let available_height = ui.available_height();
 
-            let remaining = self.timer.lock().unwrap().remaining();
-            let minutes = remaining.as_secs() / 60;
-            let seconds = remaining.as_secs() % 60;
+            // 添加上方空间，使内容垂直居中
+            ui.add_space(available_height / 2.0 - 80.0);
 
-            ui.horizontal(|ui| {
-                ui.label("Time left:");
-                ui.monospace(format!("{}:{:02}", minutes, seconds));
+            ui.vertical_centered(|ui| {
+                ui.heading("Auto Lock");
+                ui.separator();
+
+                let remaining = self.timer.lock().unwrap().remaining();
+                let minutes = remaining.as_secs() / 60;
+                let seconds = remaining.as_secs() % 60;
+
+                ui.add_space(10.0);
+                ui.label(egui::RichText::new("Time left:").size(20.0));
+                ui.label(
+                    egui::RichText::new(format!("{}:{:02}", minutes, seconds))
+                        .size(30.0)
+                        .color(egui::Color32::from_rgb(255, 140, 0)),
+                );
+                ui.add_space(10.0);
+
+                ui.separator();
+
+                // ui.horizontal(|ui| {
+                //     if ui.button("Reset Timer").clicked() {
+                //         self.timer.lock().unwrap().reset();
+                //     }
+                // });
+
+                // ui.label("Auto lock every 25 minutes");
+                // ui.label("Restart timer after unlock");
+                // ui.label("Restart timer after manual lock and unlock");
             });
-
-            ui.separator();
-
-            ui.horizontal(|ui| {
-                if ui.button("Reset Timer").clicked() {
-                    self.timer.lock().unwrap().reset();
-                }
-            });
-
-            ui.label("Auto lock every 25 minutes");
-            ui.label("Restart timer after unlock");
-            ui.label("Restart timer after manual lock and unlock");
         });
 
         ctx.request_repaint_after(std::time::Duration::from_secs(1));

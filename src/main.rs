@@ -23,7 +23,8 @@ fn main() {
         height,
     };
 
-    let timer = Timer::new(1);
+    // 创建定时器
+    let timer = Timer::new(25);
 
     {
         timer.lock().unwrap().set_callback(move || {
