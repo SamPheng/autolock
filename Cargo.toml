@@ -5,17 +5,7 @@ edition = "2024"
 
 [dependencies]
 eframe = { version = "0.33.3", features = ["default"] }
-msgbox = "^0.7.0"
-winapi = { version = "0.3.9", features = [
-    "wincon",
-    "winuser",
-    "wtsapi32",
-    "winnt",
-    "tlhelp32",
-    "handleapi",
-    "errhandlingapi",
-    "ntdef",
-] }
+winapi = { version = "0.3.9", features = ["winuser"] }
 image = { version = "0.24", features = ["ico"] }
 
 [build-dependencies]
@@ -25,10 +15,10 @@ winres = "^0.1.12"
 rpath = false
 lto = true
 strip = true
-opt-level = "z"     # 优先优化大小，提高启动速度
-codegen-units = 1   # 提高优化效果
-panic = "abort"     # 减少运行时检查
-incremental = false # 禁用增量编译以减小二进制大小
+opt-level = "z"
+codegen-units = 1
+panic = "abort"
+incremental = false
 
 [profile.dev]
-opt-level = 1 # 开发模式也启用一些优化以提高启动速度
+opt-level = 1

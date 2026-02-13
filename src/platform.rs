@@ -65,20 +65,9 @@ fn check_session_locked() -> bool {
 pub fn trigger_lock() {
     #[cfg(target_os = "windows")]
     {
-        match Command::new("rundll32")
+        let _ = Command::new("rundll32")
             .args(["user32.dll", "LockWorkStation"])
-            .status()
-        {
-            Ok(_) => {}
-            Err(e) => {
-                // 使用Windows错误对话框显示错误信息
-                let _ = msgbox::create(
-                    "锁屏失败",
-                    &format!("Windows 锁屏命令执行失败：{}", e),
-                    msgbox::IconType::Error,
-                );
-            }
-        }
+            .status();
     }
 
     #[cfg(target_os = "macos")]
