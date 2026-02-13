@@ -1,36 +1,26 @@
 use std::process::Command;
 
-// Windows锁屏状态检测 - 使用改进的方法
+// Windows锁屏状态检测 - 使用更简单可靠的方法
 #[cfg(target_os = "windows")]
 pub fn is_windows_locked() -> bool {
-    use winapi::shared::minwindef::DWORD;
     use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId};
 
     unsafe {
         // 获取前台窗口
         let hwnd = GetForegroundWindow();
-
-        // 如果没有前台窗口，UAC弹窗时也会出现这种情况
-        // 所以我们需要额外检查
         if hwnd.is_null() {
-            // 检查explorer.exe是否在运行 - 锁屏时explorer通常仍在运行
-            // 但UAC弹窗时explorer也在运行，所以这个检查主要是排除系统崩溃的情况
-
-            // 简单起见，我们认为如果没有前台窗口但系统仍在运行，就不算锁屏
-            // 这样可以避免UAC弹窗时的误判
-            return false;
+            return true; // 无前台窗口，可能已锁屏
         }
 
         // 获取拥有前台窗口的进程ID
-        let mut process_id: DWORD = 0;
-        GetWindowThreadProcessId(hwnd, &mut process_id as *mut DWORD);
+        let mut process_id: u32 = 0;
+        GetWindowThreadProcessId(hwnd, &mut process_id as *mut u32);
 
-        // 如果进程ID为0，可能已锁屏
+        // 如果进程ID为0或不存在，可能已锁屏
         if process_id == 0 {
             return true;
         }
 
-        // 未检测到锁屏状态
         false
     }
 }
