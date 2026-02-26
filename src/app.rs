@@ -38,16 +38,6 @@ impl eframe::App for AutolockApp {
                 ui.add_space(10.0);
 
                 ui.separator();
-
-                // ui.horizontal(|ui| {
-                //     if ui.button("Reset Timer").clicked() {
-                //         self.timer.lock().unwrap().reset();
-                //     }
-                // });
-
-                // ui.label("Auto lock every 25 minutes");
-                // ui.label("Restart timer after unlock");
-                // ui.label("Restart timer after manual lock and unlock");
             });
         });
 

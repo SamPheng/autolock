@@ -16,7 +16,6 @@ winapi = { version = "0.3.9", features = [
     "minwindef",
 ] }
 image = { version = "0.24", features = ["ico"] }
-chrono = "0.4.31"
 
 [build-dependencies]
 winres = "^0.1.12"
