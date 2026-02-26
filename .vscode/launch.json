@@ -3,14 +3,12 @@
     "configurations": [
         {
             "name": "Debug Rust Application",
-            "type": "cppvsdbg",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}\\target\\debug\\autolock.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
-            "console": "internalConsole",
             "preLaunchTask": "cargo build"
         }
     ]
