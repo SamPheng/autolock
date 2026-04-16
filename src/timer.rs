@@ -42,12 +42,8 @@ impl Timer {
         }
     }
 
-    pub fn is_finished(&self) -> bool {
-        self.remaining() == Duration::from_secs(0)
-    }
-
     pub fn check_and_trigger(&mut self) {
-        if self.is_finished() {
+        if self.remaining() == Duration::from_secs(0) {
             if let Some(callback) = &self.callback {
                 callback();
             }

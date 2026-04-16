@@ -5,7 +5,9 @@ use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
 use winapi::um::tlhelp32::{
     CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next,
 };
-use winapi::um::winuser::LockWorkStation;
+use winapi::um::winuser::{
+    FindWindowW, LockWorkStation, SetForegroundWindow, ShowWindow, SW_RESTORE,
+};
 
 pub fn trigger_lock() {
     unsafe {
@@ -60,4 +62,21 @@ pub fn monitor_session_events<F: Fn() + Send + 'static>(on_unlock: F) {
             was_locked = is_locked;
         }
     });
+}
+
+/// 通过 Win32 API 查找并显示主窗口
+pub fn show_main_window() {
+    unsafe {
+        let title: Vec<u16> = "Auto Lock\0".encode_utf16().collect();
+        let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
+        if !hwnd.is_null() {
+            ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
+        }
+    }
+}
+
+/// 强制退出程序
+pub fn force_exit() {
+    std::process::exit(0);
 }
