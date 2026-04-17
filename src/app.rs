@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 pub struct AutolockApp {
     timer: Arc<Mutex<Timer>>,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // 必须持有以维持托盘图标生命周期，drop 后托盘图标消失
     tray: tray_icon::TrayIcon,
     input_minutes: String,
 }

@@ -15,7 +15,7 @@ pub fn trigger_lock() {
     }
 }
 
-pub fn is_screen_locked() -> bool {
+fn is_screen_locked() -> bool {
     // 检查LogonUI.exe进程是否在运行，这是Windows登录屏幕的进程
     unsafe {
         let snapshot = CreateToolhelp32Snapshot(0x00000002, 0); // TH32CS_SNAPPROCESS
