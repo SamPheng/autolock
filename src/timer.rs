@@ -21,8 +21,17 @@ impl Timer {
         self.start_time = Some(Instant::now());
     }
 
+    pub fn stop(&mut self) {
+        self.start_time = None;
+    }
+
     pub fn reset(&mut self) {
         self.start_time = Some(Instant::now());
+    }
+
+    pub fn set_duration(&mut self, minutes: u64) {
+        self.duration = Duration::from_secs(minutes * 60);
+        self.start_time = None;
     }
 
     pub fn set_callback<F: Fn() + Send + Sync + 'static>(&mut self, callback: F) {
@@ -42,12 +51,23 @@ impl Timer {
         }
     }
 
+    pub fn is_running(&self) -> bool {
+        self.start_time.is_some()
+    }
+
+    pub fn duration_minutes(&self) -> u64 {
+        self.duration.as_secs() / 60
+    }
+
     pub fn check_and_trigger(&mut self) {
+        if self.start_time.is_none() {
+            return;
+        }
         if self.remaining() == Duration::from_secs(0) {
             if let Some(callback) = &self.callback {
                 callback();
             }
-            self.reset();
+            self.start_time = None;
         }
     }
 }

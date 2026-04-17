@@ -7,6 +7,7 @@ use app::AutolockApp;
 use eframe::{NativeOptions, egui};
 use platform::{monitor_session_events, force_exit, show_main_window, trigger_lock};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use timer::{Timer, start_timer_thread};
 use tray_icon::menu::{Menu, MenuId, MenuItem};
 use tray_icon::TrayIconEvent;
@@ -53,6 +54,7 @@ fn main() {
         });
     }
 
+    // 启动时自动开始计时
     timer.lock().unwrap().start();
 
     // 保存图标数据，用于创建托盘图标
@@ -60,16 +62,43 @@ fn main() {
 
     let options = NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([300.0, 220.0])
-            .with_min_inner_size([300.0, 220.0])
+            .with_inner_size([280.0, 220.0])
+            .with_min_inner_size([260.0, 200.0])
             .with_icon(icon),
         ..Default::default()
     };
 
     let _ = eframe::run_native(
-        "Auto Lock",
+        "自动锁屏",
         options,
-        Box::new(move |_cc| {
+        Box::new(move |cc| {
+            // 加载系统中文字体，解决中文显示方块问题
+            setup_chinese_fonts(cc);
+
+            // 设置视觉风格
+            let mut style = (*cc.egui_ctx.style()).clone();
+            style.spacing.item_spacing = egui::vec2(6.0, 4.0);
+            style.spacing.button_padding = egui::vec2(10.0, 4.0);
+
+            // Catppuccin Mocha 风格深色主题
+            let mut visuals = egui::Visuals::dark();
+            visuals.panel_fill = egui::Color32::from_rgb(30, 30, 46);       // Base
+            visuals.window_fill = egui::Color32::from_rgb(30, 30, 46);
+            visuals.override_text_color = Some(egui::Color32::from_rgb(205, 214, 244)); // Text
+            visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(69, 71, 90)); // Surface0
+            visuals.widgets.inactive.bg_fill = egui::Color32::from_rgb(49, 50, 68);     // Surface1
+            visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(88, 91, 112)); // Surface2
+            visuals.widgets.inactive.fg_stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(205, 214, 244));
+            visuals.widgets.active.bg_fill = egui::Color32::from_rgb(137, 180, 250);     // Blue
+            visuals.widgets.active.fg_stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+            visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(116, 199, 236);    // Sapphire
+            visuals.widgets.hovered.fg_stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+            visuals.selection.bg_fill = egui::Color32::from_rgb(137, 180, 250);           // Blue
+            visuals.selection.stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+            style.visuals = visuals;
+
+            cc.egui_ctx.set_style(style);
+
             // 在 eframe 创建回调中创建托盘图标
             let (tray, tray_ids) = create_tray_icon(&tray_icon_data);
 
@@ -137,4 +166,33 @@ fn create_tray_icon(icon_data: &[u8]) -> (tray_icon::TrayIcon, TrayIds) {
         .expect("Failed to create tray icon");
 
     (tray, tray_ids)
+}
+
+fn setup_chinese_fonts(cc: &eframe::CreationContext<'_>) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    // 尝试从 Windows 字体目录加载微软雅黑
+    let font_paths = [
+        std::path::PathBuf::from("C:/Windows/Fonts/msyh.ttc"),      // 微软雅黑
+        std::path::PathBuf::from("C:/Windows/Fonts/simhei.ttf"),     // 黑体
+        std::path::PathBuf::from("C:/Windows/Fonts/simsun.ttc"),     // 宋体
+    ];
+
+    for font_path in &font_paths {
+        if let Ok(font_data) = std::fs::read(font_path) {
+            fonts.font_data.insert(
+                "chinese_font".into(),
+                Arc::new(egui::FontData::from_owned(font_data)),
+            );
+            // 将中文字体插入到 Proportional 字体族首位，确保中文优先使用该字体
+            fonts.families.entry(egui::FontFamily::Proportional).or_default()
+                .insert(0, "chinese_font".into());
+            // 也加入 Monospace 字体族
+            fonts.families.entry(egui::FontFamily::Monospace).or_default()
+                .insert(0, "chinese_font".into());
+            break;
+        }
+    }
+
+    cc.egui_ctx.set_fonts(fonts);
 }

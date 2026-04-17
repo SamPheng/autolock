@@ -67,7 +67,7 @@ pub fn monitor_session_events<F: Fn() + Send + 'static>(on_unlock: F) {
 /// 通过 Win32 API 查找并显示主窗口
 pub fn show_main_window() {
     unsafe {
-        let title: Vec<u16> = "Auto Lock\0".encode_utf16().collect();
+        let title: Vec<u16> = "自动锁屏\0".encode_utf16().collect();
         let hwnd = FindWindowW(std::ptr::null(), title.as_ptr());
         if !hwnd.is_null() {
             ShowWindow(hwnd, SW_RESTORE);
