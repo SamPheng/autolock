@@ -7,12 +7,18 @@ edition = "2024"
 eframe = "0.33.3"
 winapi = { version = "0.3.9", features = [
     "winuser",
+    "windef",
     "tlhelp32",
     "handleapi",
     "minwindef",
+    "synchapi",
+    "errhandlingapi",
+    "winerror",
+    "winbase",
 ] }
 image = { version = "0.24", features = ["ico"] }
 tray-icon = "0.22.0"
+raw-window-handle = "0.6.2"
 
 [build-dependencies]
 winres = "^0.1.12"
