@@ -158,6 +158,6 @@ impl eframe::App for AutolockApp {
             });
         });
 
-        ctx.request_repaint_after(std::time::Duration::from_secs(1));
+        ctx.request_repaint_after(std::time::Duration::from_millis(200));
     }
 }
