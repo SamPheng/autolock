@@ -154,7 +154,7 @@ fn main() {
                         }
                     }
 
-                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    std::thread::sleep(std::time::Duration::from_millis(100));
                 }
             });
 

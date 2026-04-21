@@ -4,15 +4,21 @@
 
 use crate::timer::Timer;
 use crate::SKIP_INTERCEPT;
-use crate::platform::set_main_hwnd;
+use crate::platform::{hide_from_taskbar, set_main_hwnd};
 use eframe::egui;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use winapi::shared::windef::HWND;
 
 /// 标记是否已保存过窗口句柄（仅需首帧执行一次）
 static HWND_SAVED: AtomicBool = AtomicBool::new(false);
+
+/// 缓存静态文本宽度（只需计算一次）
+static LABEL_WIDTH: OnceLock<f32> = OnceLock::new();
+static UNIT_WIDTH: OnceLock<f32> = OnceLock::new();
+static BTN_START_WIDTH: OnceLock<f32> = OnceLock::new();
+static BTN_STOP_WIDTH: OnceLock<f32> = OnceLock::new();
 
 /// 应用主状态
 pub struct AutolockApp {
@@ -23,6 +29,8 @@ pub struct AutolockApp {
     tray: tray_icon::TrayIcon,
     /// 用户输入的定时时长（分钟），字符串形式以便 TextEdit 直接绑定
     input_minutes: String,
+    /// 窗口是否已隐藏到托盘，用于控制重绘频率
+    hidden: bool,
 }
 
 impl AutolockApp {
@@ -32,6 +40,7 @@ impl AutolockApp {
             timer,
             tray,
             input_minutes: minutes.to_string(),
+            hidden: false,
         }
     }
 
@@ -64,22 +73,35 @@ impl eframe::App for AutolockApp {
         let close_requested = ctx.input(|i| i.viewport().close_requested());
         if close_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+            hide_from_taskbar();
+            self.hidden = true;
         }
 
         // ── 拦截最小化：隐藏到托盘而非留在任务栏 ────────
         let is_minimized = ctx.input(|i| i.viewport().minimized.unwrap_or(false));
-        if is_minimized {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+        if is_minimized && !self.hidden {
+            hide_from_taskbar();
+            self.hidden = true;
         }
 
         // ── 从托盘恢复窗口 ──────────────────────────────
         // SKIP_INTERCEPT 由后台线程设置，此处消费该标志并恢复窗口可见性
         if SKIP_INTERCEPT.load(Ordering::SeqCst) {
             SKIP_INTERCEPT.store(false, Ordering::SeqCst);
+            self.hidden = false;
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+
+        // ── 窗口隐藏到托盘时，跳过 UI 渲染并降低重绘频率 ──
+        // 不使用 Visible(false)，因为 eframe 在窗口不可见时仍会空转渲染循环。
+        // 改用 Minimized + 隐藏任务栏，eframe 内部的 is_minimized 检测会生效，
+        // 在渲染后执行 sleep(10ms)，大幅降低 CPU 占用。
+        // 同时用较长的重绘间隔替代 200ms，避免频繁唤醒事件循环。
+        if self.hidden {
+            ctx.request_repaint_after(std::time::Duration::from_secs(1));
+            return;
         }
 
         // ── 读取定时器状态 ──────────────────────────────
@@ -91,20 +113,37 @@ impl eframe::App for AutolockApp {
         let duration_mins = timer.duration_minutes();
         drop(timer); // 尽早释放锁，避免在 UI 渲染期间持有
 
-        // ── 预计算布局宽度，用于手动居中对齐 ────────────
-        let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("measure")));
+        // ── 预计算布局宽度，用于手动居中对齐（使用缓存避免每次重绘都测量） ──
         let font = egui::FontId::default();
         let btn_font = egui::FontId::proportional(14.0);
         let item_gap = 6.0; // 与 main.rs 中 spacing.item_spacing.x 一致
         let btn_inner = 8.0 * 2.0 + 6.0; // button_padding.x * 2 + 额外边距
 
-        let input_row_w = text_width(&painter, "定时时长:", font.clone())
-            + item_gap
-            + 50.0 + 8.0  // TextEdit desired_width + 内边距
-            + item_gap
-            + text_width(&painter, "分钟", font);
+        // 获取或计算标签文本宽度（"定时时长:" 和 "分钟"）
+        let label_w = *LABEL_WIDTH.get_or_init(|| {
+            let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("measure")));
+            text_width(&painter, "定时时长:", font.clone())
+        });
+        let unit_w = *UNIT_WIDTH.get_or_init(|| {
+            let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("measure")));
+            text_width(&painter, "分钟", font)
+        });
 
-        let btn_row_w = text_width(&painter, if is_running { "停止" } else { "开始" }, btn_font.clone()) + btn_inner;
+        let input_row_w = label_w + item_gap + 50.0 + 8.0 + item_gap + unit_w;
+
+        // 获取或计算按钮文本宽度
+        let btn_text_w = if is_running {
+            *BTN_STOP_WIDTH.get_or_init(|| {
+                let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("measure")));
+                text_width(&painter, "停止", btn_font.clone())
+            })
+        } else {
+            *BTN_START_WIDTH.get_or_init(|| {
+                let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("measure")));
+                text_width(&painter, "开始", btn_font.clone())
+            })
+        };
+        let btn_row_w = btn_text_w + btn_inner;
 
         // ── 渲染 UI ─────────────────────────────────────
         egui::CentralPanel::default().show(ctx, |ui| {

@@ -16,7 +16,8 @@ use winapi::um::tlhelp32::{
 };
 use winapi::um::winbase::INFINITE;
 use winapi::um::winuser::{
-    IsIconic, LockWorkStation, SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
+    GetWindowLongW, IsIconic, LockWorkStation, SetForegroundWindow, SetWindowLongW, ShowWindow,
+    GWL_EXSTYLE, SW_RESTORE, SW_SHOW, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
 /// 全局存储主窗口句柄，由 `app.rs` 首帧通过 `set_main_hwnd()` 设置
@@ -136,6 +137,21 @@ pub fn notify_existing_instance() {
     }
 }
 
+/// 从任务栏隐藏窗口（最小化到托盘时调用）
+///
+/// 通过修改扩展窗口样式：移除 `WS_EX_APPWINDOW`，添加 `WS_EX_TOOLWINDOW`，
+/// 使窗口不出现在任务栏中。配合 eframe 的 Minimized(true) 使用，
+/// eframe 内部的 is_minimized 检测会生效并执行 sleep(10ms)，降低 CPU 占用。
+pub fn hide_from_taskbar() {
+    let hwnd = MAIN_HWND.load(std::sync::atomic::Ordering::SeqCst) as HWND;
+    if hwnd.is_null() {
+        return;
+    }
+    unsafe {
+        set_taskbar_visible(hwnd, false);
+    }
+}
+
 /// 通过 Win32 API 恢复并聚焦主窗口
 ///
 /// 从后台线程直接操作，不依赖 eframe update 循环。
@@ -146,11 +162,27 @@ pub fn show_main_window() {
         return;
     }
     unsafe {
+        set_taskbar_visible(hwnd, true);
         if IsIconic(hwnd) != 0 {
             ShowWindow(hwnd, SW_RESTORE); // 先从最小化恢复
         }
         ShowWindow(hwnd, SW_SHOW); // 显示窗口
         SetForegroundWindow(hwnd); // 提升到前台
+    }
+}
+
+/// 设置窗口是否在任务栏中显示
+///
+/// - `visible = true`：正常显示在任务栏（WS_EX_APPWINDOW，无 WS_EX_TOOLWINDOW）
+/// - `visible = false`：从任务栏隐藏（WS_EX_TOOLWINDOW，无 WS_EX_APPWINDOW）
+unsafe fn set_taskbar_visible(hwnd: HWND, visible: bool) {
+    unsafe {
+        let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
+        if visible {
+            SetWindowLongW(hwnd, GWL_EXSTYLE, ((ex_style | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW) as i32);
+        } else {
+            SetWindowLongW(hwnd, GWL_EXSTYLE, ((ex_style | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW) as i32);
+        }
     }
 }
 
