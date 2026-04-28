@@ -5,16 +5,14 @@ edition = "2024"
 
 [dependencies]
 eframe = "0.33.3"
-winapi = { version = "0.3.9", features = [
-    "winuser",
-    "windef",
-    "tlhelp32",
-    "handleapi",
-    "minwindef",
-    "synchapi",
-    "errhandlingapi",
-    "winerror",
-    "winbase",
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_Security",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_LibraryLoader",
 ] }
 image = { version = "0.24", features = ["ico"] }
 tray-icon = "0.22.0"

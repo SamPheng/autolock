@@ -9,7 +9,7 @@ use eframe::egui;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use winapi::shared::windef::HWND;
+use windows_sys::Win32::Foundation::HWND;
 
 /// 标记是否已保存过窗口句柄（仅需首帧执行一次）
 static HWND_SAVED: AtomicBool = AtomicBool::new(false);
