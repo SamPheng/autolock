@@ -14,8 +14,8 @@ use platform::{
     force_exit, listen_show_window, monitor_session_events, notify_existing_instance,
     show_main_window, trigger_lock, try_single_instance,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use timer::{Timer, start_timer_thread};
 use tray_icon::menu::{Menu, MenuId, MenuItem};
 use tray_icon::TrayIconEvent;

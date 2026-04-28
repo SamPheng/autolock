@@ -7,12 +7,11 @@ edition = "2024"
 eframe = "0.33.3"
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
-    "Win32_System_Console",
     "Win32_System_Threading",
     "Win32_System_Diagnostics_ToolHelp",
-    "Win32_Security",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_LibraryLoader",
+    "Win32_System_Kernel",
 ] }
 image = { version = "0.24", features = ["ico"] }
 tray-icon = "0.22.0"

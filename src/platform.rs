@@ -4,8 +4,11 @@ use windows_sys::Win32::Foundation::{
     CloseHandle, HWND, INVALID_HANDLE_VALUE, TRUE,
 };
 use windows_sys::Win32::System::Threading::{
-    CreateEventW, CreateMutexW, ResetEvent, SetEvent, WaitForSingleObject, INFINITE,
+    ResetEvent, SetEvent, WaitForSingleObject, INFINITE,
 };
+
+type CreateEventWFn = unsafe extern "system" fn(*mut std::ffi::c_void, i32, i32, *const u16) -> *mut std::ffi::c_void;
+type CreateMutexWFn = unsafe extern "system" fn(*mut std::ffi::c_void, i32, *const u16) -> *mut std::ffi::c_void;
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32First, Process32Next, PROCESSENTRY32, TH32CS_SNAPPROCESS,
 };
@@ -94,8 +97,18 @@ pub fn force_exit() {
 
 pub fn try_single_instance() -> Result<(), ()> {
     unsafe {
+        let kernel32 = windows_sys::Win32::System::LibraryLoader::GetModuleHandleA(b"kernel32.dll\0".as_ptr());
+        if kernel32 == std::ptr::null_mut() {
+            return Err(());
+        }
+        let create_mutex_w = windows_sys::Win32::System::LibraryLoader::GetProcAddress(kernel32, b"CreateMutexW\0".as_ptr());
+        if create_mutex_w.is_none() {
+            return Err(());
+        }
+        let create_mutex_w: CreateMutexWFn = std::mem::transmute(create_mutex_w.unwrap());
+
         let name: Vec<u16> = "AutoLock_SingleInstance".encode_utf16().chain(std::iter::once(0)).collect();
-        let handle = CreateMutexW(std::ptr::null_mut(), 0, name.as_ptr());
+        let handle = create_mutex_w(std::ptr::null_mut(), 0, name.as_ptr());
         if handle == std::ptr::null_mut() {
             return Err(());
         }
@@ -112,8 +125,18 @@ pub fn try_single_instance() -> Result<(), ()> {
 
 pub fn notify_existing_instance() {
     unsafe {
+        let kernel32 = windows_sys::Win32::System::LibraryLoader::GetModuleHandleA(b"kernel32.dll\0".as_ptr());
+        if kernel32 == std::ptr::null_mut() {
+            return;
+        }
+        let create_event_w = windows_sys::Win32::System::LibraryLoader::GetProcAddress(kernel32, b"CreateEventW\0".as_ptr());
+        if create_event_w.is_none() {
+            return;
+        }
+        let create_event_w: CreateEventWFn = std::mem::transmute(create_event_w.unwrap());
+
         let name: Vec<u16> = "AutoLock_ShowWindow".encode_utf16().chain(std::iter::once(0)).collect();
-        let event = CreateEventW(std::ptr::null_mut(), TRUE, 0, name.as_ptr());
+        let event = create_event_w(std::ptr::null_mut(), TRUE, 0, name.as_ptr());
         if event != std::ptr::null_mut() {
             let _ = SetEvent(event);
             let _ = CloseHandle(event);
@@ -170,8 +193,18 @@ unsafe fn set_taskbar_visible(hwnd: HWND, visible: bool) {
 
 pub fn listen_show_window<F: Fn() + Send + 'static>(on_show: F) {
     thread::spawn(move || unsafe {
+        let kernel32 = windows_sys::Win32::System::LibraryLoader::GetModuleHandleA(b"kernel32.dll\0".as_ptr());
+        if kernel32 == std::ptr::null_mut() {
+            return;
+        }
+        let create_event_w = windows_sys::Win32::System::LibraryLoader::GetProcAddress(kernel32, b"CreateEventW\0".as_ptr());
+        if create_event_w.is_none() {
+            return;
+        }
+        let create_event_w: CreateEventWFn = std::mem::transmute(create_event_w.unwrap());
+
         let name: Vec<u16> = "AutoLock_ShowWindow".encode_utf16().chain(std::iter::once(0)).collect();
-        let event = CreateEventW(std::ptr::null_mut(), TRUE, 0, name.as_ptr());
+        let event = create_event_w(std::ptr::null_mut(), TRUE, 0, name.as_ptr());
         if event != std::ptr::null_mut() {
             loop {
                 let _ = WaitForSingleObject(event, INFINITE);
