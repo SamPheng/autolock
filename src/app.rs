@@ -4,7 +4,7 @@
 
 use crate::timer::Timer;
 use crate::SKIP_INTERCEPT;
-use crate::platform::{hide_from_taskbar, set_main_hwnd};
+use crate::platform::{hide_from_taskbar, minimize_to_tray, set_main_hwnd};
 use eframe::egui;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -73,8 +73,7 @@ impl eframe::App for AutolockApp {
         let close_requested = ctx.input(|i| i.viewport().close_requested());
         if close_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
-            hide_from_taskbar();
+            minimize_to_tray();
             self.hidden = true;
         }
 

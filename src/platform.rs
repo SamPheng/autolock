@@ -14,7 +14,7 @@ use windows_sys::Win32::System::Diagnostics::ToolHelp::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetWindowLongPtrW, IsIconic, SetForegroundWindow, SetWindowLongPtrW, ShowWindow, GWL_EXSTYLE,
-    SW_RESTORE, SW_SHOW, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    SW_MINIMIZE, SW_RESTORE, SW_SHOW, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
 };
 
 static MAIN_HWND: std::sync::atomic::AtomicPtr<std::ffi::c_void> =
@@ -151,6 +151,18 @@ pub fn hide_from_taskbar() {
     }
     unsafe {
         set_taskbar_visible(hwnd as HWND, false);
+    }
+}
+
+pub fn minimize_to_tray() {
+    let hwnd = MAIN_HWND.load(std::sync::atomic::Ordering::SeqCst);
+    if hwnd.is_null() {
+        return;
+    }
+    unsafe {
+        let hwnd = hwnd as HWND;
+        let _ = ShowWindow(hwnd, SW_MINIMIZE);
+        set_taskbar_visible(hwnd, false);
     }
 }
 
